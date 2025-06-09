@@ -7,7 +7,7 @@ body {
 }
 
 .logo {
-  max-width: 500px; /* was 200px */
+  max-width: 800px; /* was 200px */
   height: auto;
   display: block;
   margin: 0 auto 20px auto; /* horizontally center + bottom space */
