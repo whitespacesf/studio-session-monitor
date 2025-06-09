@@ -7,10 +7,11 @@ body {
 }
 
 .logo {
-  max-width: 800px; /* was 200px */
-  height: auto;
+  width: 100%;
+  max-width: 500px; /* optional: cap max size */
+  height: auto;     /* preserves aspect ratio */
   display: block;
-  margin: 0 auto 20px auto; /* horizontally center + bottom space */
+  margin: 0 auto 20px; /* center and space below */
 }
 
 .app-container {

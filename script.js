@@ -38,12 +38,13 @@ window.onload = () => {
     client_id: CLIENT_ID,
     scope:     SCOPES,
     prompt:    "",
-    callback:  (resp) => {
-      if (resp.access_token) {
-        gapi.client.setToken(resp);
-        listEvents();
-      }
-    }
+callback: (resp) => {
+  if (resp.access_token) {
+    gapi.client.setToken(resp);
+    document.getElementById("authorize_button").style.display = "none"; // ✅ hide the button
+    listEvents();
+  }
+}
   });
 };
 
