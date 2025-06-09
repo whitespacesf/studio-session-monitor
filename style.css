@@ -7,8 +7,10 @@ body {
 }
 
 .logo {
-  max-width: 200px;
-  margin-bottom: 20px;
+  max-width: 300px; /* was 200px */
+  height: auto;
+  display: block;
+  margin: 0 auto 20px auto; /* horizontally center + bottom space */
 }
 
 .app-container {
