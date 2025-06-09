@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Studio Session Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+  <link
+    rel="icon"
+    type="image/png"
+    href="https://static.showit.co/200/Q1JF4l4WSBa9M6DVcr38ww/122294/wss_favicon.png"
+  />
+</head>
+<body>
+  <div class="app-container">
+    <img src="WSS_Logo1_Black.jpg" alt="Studio Logo" class="logo" />
+
+    <div class="session-info">
+      <h2>Current Session</h2>
+      <p id="session-time">2:00 PM - 3:00 PM</p>
+
+      <!-- LABEL for Time Remaining -->
+      <p style="margin-top: 0.5rem; font-size: 1.2rem; text-align: center;">
+        Time Remaining:
+      </p>
+      <!-- The actual countdown will appear here, centered -->
+      <p
+        id="time-remaining"
+        style="margin-top: 0.2rem; font-size: 1.5rem; text-align: center;"
+      ></p>
+
+      <div id="countdown-alert">
+        ⏰ <span id="countdown">15 minutes remaining</span>
+      </div>
+    </div>
+
+    <div class="extension-options" id="extension-options">
+      <!-- Extension buttons inserted here -->
+    </div>
+
+    <!-- Google Sign-In Button (hidden unless needed) -->
+    <button
+      id="authorize_button"
+      style="display:none;"
+      onclick="handleAuthClick()"
+    >
+      Sign in with Google
+    </button>
+  </div>
+
+  <!-- Load your custom logic first -->
+  <script src="script.js"></script>
+
+  <!-- Load Google APIs (must come after script.js so gapiLoaded() is defined) -->
+  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>

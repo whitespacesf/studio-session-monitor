@@ -1,0 +1,48 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #ffffff;
+  color: #333;
+  text-align: center;
+  padding: 20px;
+}
+
+.logo {
+  max-width: 200px;
+  margin-bottom: 20px;
+}
+
+.app-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.session-info {
+  margin-bottom: 30px;
+}
+
+.extension-options button {
+  font-size: 18px;
+  padding: 15px 25px;
+  margin: 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: #007BFF;
+  color: white;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.extension-options button:hover {
+  background-color: #0056b3;
+}
+
+#countdown-alert {
+  border: 2px solid #ff0000;
+  background-color: #fff0f0;
+  padding: 15px;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #cc0000;
+  display: inline-block;
+}
