@@ -20,12 +20,23 @@ const auth = new google.auth.GoogleAuth({
   ],
 });
 
-let calendar, sheets;
-auth.getClient().then((client) => {
-  const authClient = client;
-  calendar = google.calendar({ version: "v3", auth: authClient });
-  sheets = google.sheets({ version: "v4", auth: authClient });
-});
+// These will be initialized after authentication
+let calendar, sheets, authClient;
+
+// Authenticate and initialize clients
+(async () => {
+  try {
+    authClient = await auth.getClient();
+    calendar = google.calendar({ version: "v3", auth: authClient });
+    sheets = google.sheets({ version: "v4", auth: authClient });
+
+    app.listen(PORT, () => {
+      console.log(`✅ Server is running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to initialize Google APIs:", error);
+  }
+})();
 
 // Calendar and sheet info
 const CALENDAR_ID = "2l28nlc148jqqc7uk24u5jr9cs@group.calendar.google.com";
@@ -96,18 +107,13 @@ function formatTimeRange(start, end) {
   return `${format(start)} – ${format(end)}`;
 }
 
-app.listen(PORT, () => {
-  console.log(`✅ Server is running on http://localhost:${PORT}`);
-});
-
+// Test route
 app.get("/test-calendar", async (req, res) => {
   try {
-    const calendar = google.calendar({ version: "v3", auth: authClient });
-
     const response = await calendar.events.list({
-      calendarId: "2l28nlc148jqqc7uk24u5jr9cs@group.calendar.google.com",
-      timeMin: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour back
-      timeMax: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours ahead
+      calendarId: CALENDAR_ID,
+      timeMin: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
+      timeMax: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // next 24 hours
       singleEvents: true,
       orderBy: "startTime",
     });
