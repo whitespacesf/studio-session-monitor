@@ -99,3 +99,25 @@ function formatTimeRange(start, end) {
 app.listen(PORT, () => {
   console.log(`✅ Server is running on http://localhost:${PORT}`);
 });
+
+app.get("/test-calendar", async (req, res) => {
+  try {
+    const calendar = google.calendar({ version: "v3", auth: authClient });
+
+    const response = await calendar.events.list({
+      calendarId: "2l28nlc148jqqc7uk24u5jr9cs@group.calendar.google.com",
+      timeMin: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour back
+      timeMax: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours ahead
+      singleEvents: true,
+      orderBy: "startTime",
+    });
+
+    res.json({
+      message: "Success",
+      events: response.data.items,
+    });
+  } catch (err) {
+    console.error("❌ Calendar API error:", err);
+    res.status(500).json({ error: "Failed to fetch events" });
+  }
+});
