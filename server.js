@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // Load service account credentials
-const KEY_PATH = path.join(__dirname, "service-account-key.json");
+const KEY_PATH = path.join(__dirname, "./Private/studio-session-monitor-fbca8136fb63.json");
 const auth = new google.auth.GoogleAuth({
   keyFile: KEY_PATH,
   scopes: [
