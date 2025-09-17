@@ -115,7 +115,9 @@ function listEvents() {
       orderBy:      "startTime"
     })
     .then(response => {
-      handleLiveEvents(response.result.items);
+      const { items = [], timeZone: calendarTimeZone } = response.result || {};
+      window.calendarTimeZone = calendarTimeZone;
+      handleLiveEvents(items, calendarTimeZone);
     })
     .catch(error => {
       console.error("❌ Calendar error:", error);
@@ -123,13 +125,68 @@ function listEvents() {
 }
 
 // ------------------- Main Logic: Identify & Display Current Session -------------------
-function handleLiveEvents(events) {
+function getDateFromEventTime(eventTime, calendarTimeZone) {
+  if (!eventTime) return new Date(NaN);
+
+  if (eventTime.dateTime) {
+    return new Date(eventTime.dateTime);
+  }
+
+  if (eventTime.date) {
+    const tz = eventTime.timeZone || calendarTimeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const [year, month, day] = eventTime.date.split("-").map(Number);
+
+    if ([year, month, day].some(value => Number.isNaN(value))) {
+      return new Date(`${eventTime.date}T00:00:00`);
+    }
+
+    if (!tz) {
+      return new Date(`${eventTime.date}T00:00:00`);
+    }
+
+    const referenceUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year:   "numeric",
+      month:  "2-digit",
+      day:    "2-digit",
+      hour:   "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    });
+
+    const parts = formatter.formatToParts(referenceUtc);
+    const mapped = {};
+    for (const part of parts) {
+      if (part.type !== "literal") {
+        mapped[part.type] = part.value;
+      }
+    }
+
+    const asUtc = Date.UTC(
+      Number(mapped.year),
+      Number(mapped.month) - 1,
+      Number(mapped.day),
+      Number(mapped.hour),
+      Number(mapped.minute),
+      Number(mapped.second)
+    );
+
+    const offset = asUtc - referenceUtc.getTime();
+    return new Date(referenceUtc.getTime() - offset);
+  }
+
+  return new Date(NaN);
+}
+
+function handleLiveEvents(events, calendarTimeZone) {
   const now = new Date();
 
   // Find the event where “now” is between its start and end
   const current = events.find(evt => {
-    const start = new Date(evt.start.dateTime);
-    const end   = new Date(evt.end.dateTime);
+    const start = getDateFromEventTime(evt.start, calendarTimeZone);
+    const end   = getDateFromEventTime(evt.end, calendarTimeZone);
     return now >= start && now < end;
   });
 
@@ -142,21 +199,25 @@ function handleLiveEvents(events) {
   // Store for later extension logic
   window.currentEventId          = current.id;
   window.originalEventTitle      = current.summary || "Session";
-  window.sessionStartTime        = new Date(current.start.dateTime);
-  window.sessionEndTime          = new Date(current.end.dateTime);
+  window.sessionStartTime        = getDateFromEventTime(current.start, calendarTimeZone);
+  window.sessionEndTime          = getDateFromEventTime(current.end, calendarTimeZone);
   window.currentEventDescription = current.description || "";
 
-  const isEvent = current.summary.toLowerCase().includes("event");
+  const summaryText = current.summary || "";
+  const isEvent = summaryText.toLowerCase().includes("event");
   window.sessionClientName = extractClientName(current, isEvent);
 
   // Display client name & session time
   displayClientName(window.sessionClientName);
-  const startTime = new Date(current.start.dateTime);
-  const endTime   = new Date(current.end.dateTime);
-  sessionTimeText.textContent = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+  const startTime = getDateFromEventTime(current.start, calendarTimeZone);
+  const endTime   = getDateFromEventTime(current.end, calendarTimeZone);
+  const isAllDay  = Boolean(current.start.date && !current.start.dateTime);
+  sessionTimeText.textContent = isAllDay
+    ? "All day"
+    : `${formatTime(startTime)} - ${formatTime(endTime)}`;
 
   // Begin the countdown
-  startCountdown(endTime, isEvent, events);
+  startCountdown(endTime, isEvent, events, calendarTimeZone, { isAllDay });
 }
 
 function formatTime(date) {
@@ -181,17 +242,30 @@ function displayClientName(name) {
 }
 
 // ------------------- Countdown & Time-Remaining Display -------------------
-function startCountdown(endTime, isEvent, events) {
-  const alertThreshold = isEvent ? 30 : 15;
-  const chimeSound     = new Audio(isEvent ? "30_minute_warning.wav" : "15_minute_warning.wav");
+function startCountdown(endTime, isEvent, events, calendarTimeZone, options = {}) {
+  const { isAllDay = false } = options;
+  const shouldOfferExtensions = !isAllDay;
+  const alertThreshold = shouldOfferExtensions ? (isEvent ? 30 : 15) : null;
+  const chimeSound = shouldOfferExtensions
+    ? new Audio(isEvent ? "30_minute_warning.wav" : "15_minute_warning.wav")
+    : null;
 
   // Find the next event that starts after this one ends
-  const nextEvt = events.find(evt => new Date(evt.start.dateTime) > endTime);
-  const availableMinutes = nextEvt
-    ? Math.floor((new Date(nextEvt.start.dateTime) - endTime) / (60 * 1000))
+  const nextEvt = shouldOfferExtensions
+    ? events.find(evt => getDateFromEventTime(evt.start, calendarTimeZone) > endTime)
+    : null;
+  const nextEventStart = nextEvt
+    ? getDateFromEventTime(nextEvt.start, calendarTimeZone)
+    : null;
+  const availableMinutes = nextEventStart
+    ? Math.floor((nextEventStart - endTime) / (60 * 1000))
     : 240; // fallback: assume 4 hours free
 
   let alertPlayed = false;
+
+  extensionDiv.innerHTML        = "";
+  countdownAlert.style.display  = "none";
+  countdownText.textContent     = "";
 
   const interval = setInterval(() => {
     const now           = new Date();
@@ -220,12 +294,16 @@ function startCountdown(endTime, isEvent, events) {
     }
 
     // Only play the chime once at threshold
-    if (minsRemaining === alertThreshold && msRemaining > 0 && !alertPlayed) {
+    if (alertThreshold !== null && minsRemaining === alertThreshold && msRemaining > 0 && !alertPlayed) {
       alertPlayed = true;
       countdownText.textContent     = `${alertThreshold} minutes remaining`;
       countdownAlert.style.display  = "inline-block";
-      chimeSound.play().catch(err => console.log("Autoplay blocked:", err));
-      showExtensionButtons(availableMinutes, isEvent);
+      if (chimeSound) {
+        chimeSound.play().catch(err => console.log("Autoplay blocked:", err));
+      }
+      if (shouldOfferExtensions) {
+        showExtensionButtons(availableMinutes, isEvent);
+      }
     }
 
     // When time’s up, clear things
