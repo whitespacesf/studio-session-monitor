@@ -66,21 +66,9 @@
       <!-- Extension buttons inserted here -->
     </div>
 
-    <!-- Google Sign-In Button (hidden unless needed) -->
-    <button
-      id="authorize_button"
-      style="display:none;"
-      onclick="handleAuthClick()"
-    >
-      Sign in with Google
-    </button>
   </div>
 
   <!-- Load your custom logic first -->
   <script src="script.js"></script>
-
-  <!-- Load Google APIs (must come after script.js so gapiLoaded() is defined) -->
-  <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
