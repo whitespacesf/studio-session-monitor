@@ -339,92 +339,64 @@ function showExtensionButtons(availableMinutes, isEvent = false) {
         );
         if (!confirmed) return;
 
-        // 1) Calculate new end time
-        const newEnd = new Date(
-          window.sessionEndTime.getTime() + option.minutes * 60000
-        );
-
-        // 2) Build updated title (append [EXTENDED] if needed)
         const originalTitle   = window.originalEventTitle || "Session";
         const alreadyExtended = originalTitle.includes("[EXTENDED]");
         const updatedTitle    = alreadyExtended
           ? originalTitle
           : `${originalTitle} [EXTENDED]`;
 
-        // 3) Build appended description
+        const durationLabel = option.minutes === 60
+          ? "1 hour"
+          : `${option.minutes} minutes`;
+
+        const payload = {
+          eventId:          window.currentEventId,
+          originalTitle:    originalTitle,
+          sessionStart:     window.sessionStartTime.toISOString(),
+          currentEnd:       window.sessionEndTime.toISOString(),
+          extendMinutes:    option.minutes,
+          description:      window.currentEventDescription || "",
+          clientName:       window.sessionClientName || "",
+          durationLabel:    durationLabel,
+          extensionAmount:  option.price
+        };
+
+        const newEnd = new Date(
+          window.sessionEndTime.getTime() + option.minutes * 60000
+        );
+
         const timestamp  = new Date().toLocaleTimeString();
         const appendText = `${timestamp} — Client extended their session by ${option.minutes} minutes.`;
         const newDescription = window.currentEventDescription
           ? appendText + "\n" + window.currentEventDescription
           : appendText;
 
-        // 4) Patch the Calendar event
-        const patchBody = {
-          summary: updatedTitle,
-          end: {
-            dateTime: newEnd.toISOString(),
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-          },
-          description: newDescription
-        };
-
         try {
-          await gapi.client.calendar.events.patch({
-            calendarId: "2l28nlc148jqqc7uk24u5jr9cs@group.calendar.google.com",
-            eventId:    window.currentEventId,
-            resource:   patchBody
+          const response = await fetch("http://localhost:3001/extend-session", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(payload)
           });
 
-         // 5) Build data for the Sheets row
-const formattedDate = window.sessionStartTime.toLocaleDateString(undefined, {
-  month:  "long",
-  day:    "numeric",
-  year:   "numeric"
-});
-const originalRange = `${formattedDate} ${formatTime(window.sessionStartTime)} – ${formatTime(window.sessionEndTime)}`;
-const newTimeRange  = `${formatTime(window.sessionStartTime)} – ${formatTime(newEnd)}`;
+          if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}`);
+          }
 
-const durationLabel   = option.minutes === 60
-  ? "1 hour"
-  : `${option.minutes} minutes`;
-const total = option.price;
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error("Server reported failure");
+          }
 
-// 6) Clean off “(White Space Studio)” if present
-const cleanedTitle = originalTitle.replace(
-  /\s*\(White Space Studio\)/i,
-  ""
-).trim();
-
-// 7) Append directly via Sheets API
-const SPREADSHEET_ID = "1AhJHK4wWg_c3aOclzqbJ1XZf9L1mBafik-MtQub77Zo";
-const SHEET_NAME     = "Session_Extensions";
-const range          = `${SHEET_NAME}!A:E`;
-
-const values = [[
-  window.sessionClientName, // A: Name
-  originalRange,            // B: Original Appointment
-  newTimeRange,             // C: New Time
-  durationLabel,            // D: Duration
-  total                     // E: Total
-]];
-
-await gapi.client.sheets.spreadsheets.values.append({
-  spreadsheetId:    SPREADSHEET_ID,
-  range:            range,
-  valueInputOption: "USER_ENTERED",
-  resource:         { values: values }
-});
-          console.log("✅ Successfully updated Calendar and appended row to Sheet.");
-
-          // 8) Update in-memory values & reload UI
           window.sessionEndTime          = newEnd;
           window.originalEventTitle      = updatedTitle;
           window.currentEventDescription = newDescription;
+
+          console.log("✅ Successfully extended session via server.");
           location.reload();
 
         } catch (err) {
           console.error("❌ Error extending session:", err);
-          alert("❌ Failed to update Calendar or append row to Sheet.");
+          alert("❌ Failed to extend session.");
         }
       };
 
