@@ -49,6 +49,7 @@ app.post("/extend-session", async (req, res) => {
     eventId,
     originalTitle,
     currentEnd,
+    sessionStart,
     extendMinutes,
     description,
     clientName,
@@ -57,7 +58,10 @@ app.post("/extend-session", async (req, res) => {
   } = req.body;
 
   try {
-    const newEnd = new Date(new Date(currentEnd).getTime() + extendMinutes * 60000);
+    const currentEndDate = new Date(currentEnd);
+    const sessionStartDate = sessionStart ? new Date(sessionStart) : null;
+    const extendMs = Number(extendMinutes) * 60000;
+    const newEnd = new Date(currentEndDate.getTime() + extendMs);
     const updatedTitle = originalTitle.includes("[EXTENDED]")
       ? originalTitle
       : `${originalTitle} [EXTENDED]`;
@@ -79,9 +83,12 @@ app.post("/extend-session", async (req, res) => {
     });
 
     // Append row to Sheet
-    const origStart = new Date(new Date(newEnd).getTime() - extendMinutes * 60000);
-    const origRange = formatTimeRange(origStart, new Date(currentEnd));
-    const newRange = formatTimeRange(origStart, newEnd);
+    const safeSessionStart =
+      sessionStartDate && !Number.isNaN(sessionStartDate.getTime())
+        ? sessionStartDate
+        : new Date(currentEndDate.getTime() - extendMs);
+    const origRange = formatTimeRange(safeSessionStart, currentEndDate);
+    const newRange = formatTimeRange(safeSessionStart, newEnd);
 
     const values = [
       [clientName, origRange, newRange, durationLabel, extensionAmount],
