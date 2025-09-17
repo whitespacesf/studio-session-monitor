@@ -308,11 +308,19 @@ function startCountdown(endTime, isEvent, events, calendarTimeZone, options = {}
 
     // When time’s up, clear things
     if (msRemaining <= 0) {
-      clearInterval(interval);
       countdownText.textContent     = "Session ended";
       countdownAlert.style.display  = "none";
       extensionDiv.innerHTML        = "";
       if (timeRemainingEl) timeRemainingEl.textContent = "";
+      // Refresh events so the next session (if any) displays automatically
+      setTimeout(() => {
+        try {
+          listEvents();
+        } catch (err) {
+          console.error("❌ Failed to refresh events after session end:", err);
+        }
+      }, 500);
+      clearInterval(interval);
     }
   }, 1000);
 }
