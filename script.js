@@ -8,6 +8,8 @@ const SCOPES = [
 
 let tokenClient;
 let gapiInited = false;
+let tokenClientReady = false;
+let autoAuthTimeoutId;
 
 // This function is called by <script onload="gapiLoaded()"> in index.html
 function gapiLoaded() {
@@ -21,16 +23,40 @@ async function initializeGapiClient() {
       "https://sheets.googleapis.com/$discovery/rest?version=v4"
     ]
   });
-  maybeAutoAuth();
+  gapiInited = true;
+  tryAuthorize();
 }
 
 function maybeAutoAuth() {
+  if (!gapiInited || !tokenClientReady || gapi.client.getToken()) {
+    return;
+  }
+
   tokenClient.requestAccessToken({ prompt: "" });
-  setTimeout(() => {
+
+  if (autoAuthTimeoutId) {
+    clearTimeout(autoAuthTimeoutId);
+  }
+
+  autoAuthTimeoutId = setTimeout(() => {
     if (!gapi.client.getToken()) {
       document.getElementById("authorize_button").style.display = "inline-block";
     }
   }, 2000);
+}
+
+function tryAuthorize() {
+  if (!gapiInited) {
+    return;
+  }
+
+  if (gapi.client.getToken()) {
+    document.getElementById("authorize_button").style.display = "none";
+    listEvents();
+    return;
+  }
+
+  maybeAutoAuth();
 }
 
 window.onload = () => {
@@ -38,14 +64,19 @@ window.onload = () => {
     client_id: CLIENT_ID,
     scope:     SCOPES,
     prompt:    "",
-callback: (resp) => {
-  if (resp.access_token) {
-    gapi.client.setToken(resp);
-    document.getElementById("authorize_button").style.display = "none"; // ✅ hide the button
-    listEvents();
-  }
-}
+    callback: (resp) => {
+      if (resp.access_token) {
+        gapi.client.setToken(resp);
+        document.getElementById("authorize_button").style.display = "none"; // ✅ hide the button
+        tryAuthorize();
+      } else {
+        document.getElementById("authorize_button").style.display = "inline-block";
+      }
+    }
   });
+
+  tokenClientReady = true;
+  tryAuthorize();
 };
 
 function handleAuthClick() {
